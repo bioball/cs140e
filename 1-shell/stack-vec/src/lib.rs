@@ -125,18 +125,9 @@ impl<'a, T: Clone + 'a> StackVec<'a, T> {
         if self.is_empty() {
             return None
         }
-        // println!("Head is {}", self._head);
-        let last = &self.storage[self._head];
         self._head -= 1;
+        let last = &self.storage[self._head];
         Some(last.clone())
-    }
-}
-
-impl<'a, T> Deref for StackVec<'a, T> {
-    type Target = [T];
-    fn deref(&self) -> &[T] {
-        // let boxed: Box<[T]> = &self.storage.into_boxed_slice()
-        &self.storage
     }
 }
 
@@ -160,19 +151,24 @@ impl<'a, T> IndexMut<usize> for StackVec<'a, T> {
 }
 
 pub struct StackIterator<'a, T: 'a> {
-    _vec: StackVec<'a, T>,
-    next: usize,
+    // _vec: &'a StackVec<'a, T>,
+    // _next: usize,
+    _iter: std::slice::Iter<'a, T>,
+    _max_len: usize,
+    _next: usize,
 }
 
-impl<'a, T> Iterator for StackIterator<'a, T> {
+impl<'a, T: 'a> Iterator for StackIterator<'a, T> {
     type Item = &'a T;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next >= self._vec.len() {
+        // None
+        self._next += 1;
+        if self._next >= self._max_len {
             return None
         }
-        let ref item = &self._vec[self.next];
-        self.next += 1;
-        Some(&item)
+        // let idx = self._next;
+        self._iter.next()
+        // self._vec.get(idx)
     }
 }
 
@@ -180,22 +176,32 @@ impl<'a, T> IntoIterator for StackVec<'a, T> {
     type Item = &'a T;
     type IntoIter = StackIterator<'a, T>;
 
-    fn into_iter(self) -> StackIterator<'a, T> {
-        StackIterator { _vec: self, next: 0 }
+    fn into_iter(self) -> Self::IntoIter {
+        let len = self.len();
+        // StackIterator { _next: 0, _vec: &self }
+        StackIterator { _next: 0, _max_len: len, _iter: self.storage.iter() }
     }
 }
 
 impl<'a, T> IntoIterator for &'a StackVec<'a, T> {
     type Item = &'a T;
-    type IntoIter = core::slice::Iter<'a, T>;
+    type IntoIter = StackIterator<'a, T>;
 
-    fn into_iter(self) -> core::slice::Iter<'a, T> {
-        self.storage.iter()
+    fn into_iter(self) -> Self::IntoIter {
+        let len = self.len();
+        StackIterator { _next: 0, _max_len: len, _iter: self.storage.iter() }
     }
 }
 
-impl<'a, T> DerefMut for StackVec<'a, T> {
+impl<'a, T: 'a + Clone> Deref for StackVec<'a, T> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        &self.storage[0..self._head]
+    }
+}
+
+impl<'a, T: 'a + Clone> DerefMut for StackVec<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.storage
+        &mut self.storage[0..self._head]
     }
 }
